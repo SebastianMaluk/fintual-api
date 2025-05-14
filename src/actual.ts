@@ -1,21 +1,29 @@
-import api from "@actual-app/api"
-import fs from "node:fs"
+import * as api from "@actual-app/api"
+import * as fs from "node:fs"
 import type { TransactionEntity } from "@actual-app/api/@types/loot-core/types/models"
 import * as v from "valibot"
 import type { InitConfig } from "@actual-app/api/@types/loot-core/server/main"
 import "./env"
 
-const SERVER_URL = process.env.ACTUAL_SERVER_URL || ""
-const PASSWORD = process.env.ACTUAL_PASSWORD || ""
-const SYNC_ID = process.env.ACTUAL_SYNC_ID || ""
-const BUDGET_ID = process.env.ACTUAL_BUDGET_ID || ""
-const FINTUAL_ACCOUNT = process.env.ACTUAL_FINTUAL_ACCOUNT || ""
-const STARTING_DATE = process.env.STARTING_DATE || "2024-03-01"
-const PAYEE = process.env.ACTUAL_PAYEE || "Fintual"
+const SERVER_URL = process.env.ACTUAL_SERVER_URL ?? ""
+const PASSWORD = process.env.ACTUAL_PASSWORD ?? ""
+const SYNC_ID = process.env.ACTUAL_SYNC_ID ?? ""
+const BUDGET_ID = process.env.ACTUAL_BUDGET_ID ?? ""
+const FINTUAL_ACCOUNT = process.env.ACTUAL_FINTUAL_ACCOUNT ?? ""
+const STARTING_DATE = process.env.STARTING_DATE ?? "2024-03-01"
+const PAYEE = process.env.ACTUAL_PAYEE ?? "Fintual"
 
-if (!SERVER_URL || !SYNC_ID || !BUDGET_ID || !FINTUAL_ACCOUNT) {
-  console.error("Missing environment variables")
-  process.exit(1)
+if (
+	!SERVER_URL ||
+	!PASSWORD ||
+	!SYNC_ID ||
+	!BUDGET_ID ||
+	!FINTUAL_ACCOUNT ||
+	!STARTING_DATE ||
+	!PAYEE
+) {
+	console.error("Missing environment variables")
+	process.exit(1)
 }
 
 const balanceFileSchema = v.object({
@@ -35,8 +43,7 @@ const balanceFileSchema = v.object({
 		}),
 	),
 })
-
-async function main() {
+async function dailyVariation() {
 	await api.init({
 		dataDir: "./tmp/actual-data",
 		serverURL: SERVER_URL,
@@ -50,17 +57,19 @@ async function main() {
 		undefined,
 		undefined,
 	)
-	console.log("Transactions:", transactions)
 	console.log("Transactions count:", transactions.length)
 
 	let total = 0
-	for (let i = 0; i < transactions.length; i++) {
-		total += transactions[i].amount
+	for (const element of transactions) {
+		total += element.amount
 	}
 	console.log("Total:", total)
 
 	// open balance.json file
-	const balanceFile = fs.readFileSync("./tmp/fintual-data/balance.json", "utf-8")
+	const balanceFile = fs.readFileSync(
+		"./tmp/fintual-data/balance.json",
+		"utf-8",
+	)
 	const balance = JSON.parse(balanceFile)
 	// validate balance file
 	const balanceValidation = v.safeParse(balanceFileSchema, balance)
@@ -96,9 +105,9 @@ async function main() {
 		newTransactions,
 	)
 
-	console.log("Added transactions:", added)
-	console.log("Updated transactions:", updated)
-	console.log("Errors:", errors)
+	console.log("Added transactions:", added.length)
+	console.log("Updated transactions:", updated.length)
+	console.log("Errors:", errors?.length)
 
 	await api.shutdown()
 }
@@ -108,17 +117,15 @@ async function baseVariation() {
 		dataDir: "./tmp/actual-data",
 		serverURL: SERVER_URL,
 		password: PASSWORD,
-  } satisfies InitConfig)
+	} satisfies InitConfig)
 
 	await api.downloadBudget(SYNC_ID)
 
-	const transactions = await api.getTransactions(
-		FINTUAL_ACCOUNT,
-		undefined,
-		undefined,
-	)
 	// sum up all real differences from the balance.json file
-	const balanceFile = fs.readFileSync("./tmp/fintual-data/balance.json", "utf-8")
+	const balanceFile = fs.readFileSync(
+		"./tmp/fintual-data/balance.json",
+		"utf-8",
+	)
 	const balance = JSON.parse(balanceFile)
 	// validate balance file
 	const balanceValidation = v.safeParse(balanceFileSchema, balance)
@@ -127,7 +134,7 @@ async function baseVariation() {
 		return
 	}
 	const balanceData = balanceValidation.output.balance
-	const depositsData = balanceValidation.output.deposits
+
 	// sum up all real differences before march 2024
 	const filteredBalanceData = balanceData.filter(
 		(b) => b.date < Date.parse(STARTING_DATE),
@@ -157,12 +164,14 @@ async function baseVariation() {
 		FINTUAL_ACCOUNT,
 		[transaction],
 	)
-	console.log("Added transactions:", added)
-	console.log("Updated transactions:", updated)
-	console.log("Errors:", errors)
+	console.log("Added transactions:", added.length)
+	console.log("Updated transactions:", updated.length)
+	console.log("Errors:", errors?.length)
 
 	await api.shutdown()
 }
 
-main()
-baseVariation()
+export async function main() {
+	await dailyVariation()
+	await baseVariation()
+}

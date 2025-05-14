@@ -1,13 +1,13 @@
 import "./env"
 import { getRandom } from "random-useragent"
 import { chromium, type Page } from "playwright"
-import fs from "node:fs"
+import * as fs from "node:fs"
 import * as v from "valibot"
 
 const BASE_URL = "https://fintual.cl/app"
-const USER_EMAIL = process.env.FINTUAL_USER_EMAIL || ""
-const USER_PASSWORD = process.env.FINTUAL_USER_PASSWORD || ""
-const GOAL_ID = process.env.FINTUAL_GOAL_ID || ""
+const USER_EMAIL = process.env.FINTUAL_USER_EMAIL ?? ""
+const USER_PASSWORD = process.env.FINTUAL_USER_PASSWORD ?? ""
+const GOAL_ID = process.env.FINTUAL_GOAL_ID ?? ""
 
 async function login(page: Page) {
 	const emailInput = await page.waitForSelector('input[name="user[email]"]')
@@ -83,14 +83,14 @@ async function getPerformance(page: Page) {
 	return null
 }
 
-async function main() {
+export async function main() {
 	try {
 		const USER_AGENT = getRandom()
 
 		const browser = await chromium.launch({ headless: true })
 		const context = await browser.newContext({ userAgent: USER_AGENT })
 		const page = await context.newPage()
-		await page.setDefaultTimeout(30000)
+		page.setDefaultTimeout(30000)
 		await page.setViewportSize({ width: 800, height: 600 })
 		await page.goto(`${BASE_URL}/login`)
 
@@ -109,8 +109,6 @@ async function main() {
 			await browser.close()
 			return
 		}
-
-		console.log(goalPerformance)
 
 		const balance = goalPerformance.data.attributes.performance.find(
 			(p) => p.identifier === "fintual",
@@ -179,7 +177,7 @@ async function main() {
 		let realDiff = 0
 		// Calculate the real difference by subtracting deposit difference
 		const balanceWithRealDifference = balanceData.map((b) => {
-			const depositDifference = depositsByDate.get(b.date) || 0
+			const depositDifference = depositsByDate.get(b.date) ?? 0
 			realDiff += b.difference - depositDifference
 			return {
 				...b,
@@ -210,5 +208,3 @@ async function main() {
 		process.exit(1)
 	}
 }
-
-main()
