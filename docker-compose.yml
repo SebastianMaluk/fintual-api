@@ -1,0 +1,8 @@
+services:
+  fintual-api:
+    build: .
+    container_name: fintual-api
+    env_file: .env
+    volumes:
+      - ./tmp:/app/tmp
+    restart: unless-stopped
