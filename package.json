@@ -1,6 +1,6 @@
 {
 	"name": "fintual-api",
-	"packageManager": "pnpm@12.3.2",
+	"packageManager": "pnpm@12.3.4",
 	"devEngines": {
 		"runtime": {
 			"name": "node",
